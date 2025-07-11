@@ -2,7 +2,7 @@
 
 A modern, responsive AI chat interface built with Next.js, TypeScript, and Tailwind CSS. Features support for both Gemini Pro and OpenAI APIs with a beautiful dark/light mode toggle.
 
-![AI Chat UI Screenshot](https://via.placeholder.com/800x600/4F46E5/FFFFFF?text=AI+Chat+UI)
+![AI Chat UI Screenshot](https://apna-assistant-chatbot-zq4p.vercel.app/)
 
 ## ✨ Features
 
