@@ -1,15 +1,19 @@
+// src/app/api/chat/route.ts
 import { GoogleGenerativeAI } from '@google/generative-ai';
 import { NextRequest, NextResponse } from 'next/server';
 
-// Initialize Gemini AI
+// Message interface (yeh yahan bhi define kar lete hain taaki type safety rahe)
+interface Message {
+  role: 'user' | 'assistant';
+  content: string;
+}
+
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY || '');
 
 export async function POST(request: NextRequest) {
   try {
-    // Parse the request body
     const { message, history = [] } = await request.json();
 
-    // Validate the message
     if (!message || typeof message !== 'string') {
       return NextResponse.json(
         { error: 'Message is required and must be a string' },
@@ -17,7 +21,6 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Check if API key is configured
     if (!process.env.GEMINI_API_KEY) {
       return NextResponse.json(
         { error: 'Gemini API key is not configured. Please set GEMINI_API_KEY environment variable.' },
@@ -25,45 +28,39 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Get the generative model
-    const model = genAI.getGenerativeModel({ model: 'gemini-2.0-flash' });
+    const model = genAI.getGenerativeModel({ model: 'gemini-1.5-flash' });
 
-    interface Message {
-      role: string;
-      content: string;
-    }
-
-    // Prepare the conversation history for context
     let conversationContext = '';
     if (history && history.length > 0) {
+      // Yahan 'msg: any' ko theek kiya
       conversationContext = (history as Message[])
-        .slice(-10) // Keep only the last 10 messages for context
-        .map((msg) => `${msg.role === 'user' ? 'User' : 'Assistant'}: ${msg.content}`)
+        .slice(-10)
+        .map((msg: Message) => `${msg.role === 'user' ? 'User' : 'Assistant'}: ${msg.content}`)
         .join('\n');
       conversationContext += '\n';
     }
 
-    // Create the prompt with context
     const prompt = conversationContext + `User: ${message}\nAssistant:`;
 
-    // Generate response
     const result = await model.generateContent(prompt);
     const response = await result.response;
     const text = response.text();
 
-    // Return the response
     return NextResponse.json({
       message: text,
       timestamp: new Date().toISOString(),
     });
 
-  } catch (error: any) {
+  } catch (error: unknown) { // 'any' ko 'unknown' kiya
     console.error('Error in chat API:', error);
 
-    // error.message ko type-safe banayein
-    const errorMessage = (error as Error).message || "Unknown error";
+    let errorMessage = 'An unknown error occurred.';
+    if (error instanceof Error) {
+      errorMessage = error.message;
+    } else if (typeof error === 'object' && error !== null && 'error' in error && typeof (error as any).error === 'string') {
+      errorMessage = (error as any).error; // Agar error object mein 'error' property hai
+    }
 
-    // Handle specific error types
     if (errorMessage.includes('API_KEY_INVALID')) {
       return NextResponse.json(
         { error: 'Invalid API key. Please check your Gemini API key configuration.' },
@@ -85,15 +82,13 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Generic error response
     return NextResponse.json(
-      { error: 'An error occurred while processing your request. Please try again.' },
+      { error: errorMessage }, // Ab errorMessage use kiya
       { status: 500 }
     );
   }
 }
 
-// Handle CORS for development
 export async function OPTIONS() {
   return new NextResponse(null, {
     status: 200,
@@ -104,4 +99,3 @@ export async function OPTIONS() {
     },
   });
 }
-

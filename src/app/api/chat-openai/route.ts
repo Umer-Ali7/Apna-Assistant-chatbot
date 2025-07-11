@@ -1,17 +1,21 @@
+// src/app/api/chat-openai/route.ts
 import OpenAI from 'openai';
 import { NextRequest, NextResponse } from 'next/server';
 
-// Initialize OpenAI
+// Message interface (yeh yahan bhi define kar lete hain)
+interface Message {
+  role: 'user' | 'assistant';
+  content: string;
+}
+
 const openai = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY || '',
 });
 
 export async function POST(request: NextRequest) {
   try {
-    // Parse the request body
     const { message, history = [] } = await request.json();
 
-    // Validate the message
     if (!message || typeof message !== 'string') {
       return NextResponse.json(
         { error: 'Message is required and must be a string' },
@@ -19,7 +23,6 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Check if API key is configured
     if (!process.env.OPENAI_API_KEY) {
       return NextResponse.json(
         { error: 'OpenAI API key is not configured. Please set OPENAI_API_KEY environment variable.' },
@@ -27,21 +30,15 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    interface Message {
-      role: string;
-      content: string;
-    }
-
-    // Prepare messages for OpenAI format
-    const messages: any[] = [
+    const messages: OpenAI.Chat.Completions.ChatCompletionMessageParam[] = [
       {
         role: 'system',
         content: 'You are a helpful AI assistant. Provide clear, accurate, and helpful responses to user questions.'
       }
     ];
 
-    // Add conversation history (keep last 10 messages for context)
     if (history && history.length > 0) {
+      // Yahan 'msg: any' ko theek kiya
       const recentHistory = (history as Message[]).slice(-10);
       for (const msg of recentHistory) {
         messages.push({
@@ -51,15 +48,13 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    // Add the current user message
     messages.push({
       role: 'user',
       content: message
     });
 
-    // Generate response using OpenAI
     const completion = await openai.chat.completions.create({
-      model: 'gpt-4',
+      model: 'gpt-3.5-turbo',
       messages: messages,
       max_tokens: 1000,
       temperature: 0.7,
@@ -72,49 +67,41 @@ export async function POST(request: NextRequest) {
       throw new Error('No response generated');
     }
 
-    // Return the response
     return NextResponse.json({
       message: responseMessage,
       timestamp: new Date().toISOString(),
     });
 
-  } catch (error: any) {
+  } catch (error: unknown) { // 'any' ko 'unknown' kiya
     console.error('Error in OpenAI chat API:', error);
 
-    const errStatus = (error as { status?: number}).status;
-    const errorMessage = (error as Error).message || "Unknown error";
+    let errorMessage = 'An unknown error occurred.';
+    let status = 500;
 
-    // Handle specific error types
-    if (errStatus === 401) {
-      return NextResponse.json(
-        { error: 'Invalid API key. Please check your OpenAI API key configuration.' },
-        { status: 401 }
-      );
+    if (error instanceof OpenAI.APIError) {
+      errorMessage = error.message;
+      status = error.status || 500;
+    } else if (error instanceof Error) {
+      errorMessage = error.message;
+    } else if (typeof error === 'object' && error !== null && 'error' in error && typeof (error as any).error === 'string') {
+      errorMessage = (error as any).error;
     }
 
-    if (errStatus === 429) {
-      return NextResponse.json(
-        { error: 'API quota exceeded or rate limit reached. Please try again later.' },
-        { status: 429 }
-      );
+    if (errorMessage.includes('Invalid API key')) {
+      status = 401;
+    } else if (errorMessage.includes('quota exceeded') || errorMessage.includes('rate limit')) {
+      status = 429;
+    } else if (errorMessage.includes('content_policy')) {
+      status = 400;
     }
 
-    if (errStatus === 400 && errorMessage.includes('content_policy')) {
-      return NextResponse.json(
-        { error: 'Content was blocked due to policy violations. Please rephrase your message.' },
-        { status: 400 }
-      );
-    }
-
-    // Generic error response
     return NextResponse.json(
-      { error: 'An error occurred while processing your request. Please try again.' },
-      { status: 500 }
+      { error: errorMessage },
+      { status: status }
     );
   }
 }
 
-// Handle CORS for development
 export async function OPTIONS() {
   return new NextResponse(null, {
     status: 200,
@@ -125,4 +112,3 @@ export async function OPTIONS() {
     },
   });
 }
-

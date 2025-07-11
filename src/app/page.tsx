@@ -105,58 +105,65 @@ export default function ChatPage() {
     return response.json();
   };
 
-  // Handle form submission
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!input.trim() || isLoading) return;
-
-    const userMessage: Message = {
-      id: Date.now().toString(),
-      content: input.trim(),
-      role: 'user',
-      timestamp: new Date(),
-    };
-
-    setMessages(prev => [...prev, userMessage]);
-    setInput('');
-    setIsLoading(true);
-    setError(null);
-
-    try {
-      const result = await callAPI(userMessage.content, messages);
-      
-      const assistantMessage: Message = {
-        id: (Date.now() + 1).toString(),
-        content: result.message,
-        role: 'assistant',
-        timestamp: new Date(),
-      };
-      
-      setMessages(prev => [...prev, assistantMessage]);
-    } catch (error: any) {
-      console.error('Error sending message:', error);
-      setError(error.message);
-      
-      // Add error message to chat
-      const errorMessage: Message = {
-        id: (Date.now() + 1).toString(),
-        content: `Sorry, I encountered an error: ${error.message}`,
-        role: 'assistant',
-        timestamp: new Date(),
-      };
-      setMessages(prev => [...prev, errorMessage]);
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  // Handle Enter key press
-  const handleKeyPress = (e: React.KeyboardEvent) => {
-    if (e.key === 'Enter' && !e.shiftKey) {
+    // Handle form submission
+    const handleSubmit = async (e: React.FormEvent) => {
       e.preventDefault();
-      handleSubmit(e as any);
-    }
-  };
+      if (!input.trim() || isLoading) return;
+  
+      const userMessage: Message = {
+        id: Date.now().toString(),
+        content: input.trim(),
+        role: 'user',
+        timestamp: new Date(),
+      };
+  
+      setMessages(prev => [...prev, userMessage]);
+      setInput('');
+      setIsLoading(true);
+      setError(null);
+  
+      try {
+        const result = await callAPI(userMessage.content, messages);
+        
+        const assistantMessage: Message = {
+          id: (Date.now() + 1).toString(),
+          content: result.message,
+          role: 'assistant',
+          timestamp: new Date(),
+        };
+        
+        setMessages(prev => [...prev, assistantMessage]);
+      } catch (error: unknown) { // 'any' ko 'unknown' kiya
+        console.error('Error sending message:', error);
+        let displayError = 'An unknown error occurred.';
+        if (error instanceof Error) {
+          displayError = error.message;
+        } else if (typeof error === 'object' && error !== null && 'error' in error && typeof (error as any).error === 'string') {
+          displayError = (error as any).error;
+        }
+        setError(displayError);
+        
+        // Add error message to chat
+        const errorMessage: Message = {
+          id: (Date.now() + 1).toString(),
+          content: `Sorry, I encountered an error: ${displayError}`,
+          role: 'assistant',
+          timestamp: new Date(),
+        };
+        setMessages(prev => [...prev, errorMessage]);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+  
+    // Handle Enter key press
+    const handleKeyPress = (e: React.KeyboardEvent) => {
+      if (e.key === 'Enter' && !e.shiftKey) {
+        e.preventDefault();
+        // Yahan 'e as any' ko theek kiya
+        handleSubmit(e as unknown as React.FormEvent); // Explicit type assertion
+      }
+    };
 
   // Clear chat
   const clearChat = () => {
