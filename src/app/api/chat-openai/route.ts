@@ -27,6 +27,11 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    interface Message {
+      role: string;
+      content: string;
+    }
+
     // Prepare messages for OpenAI format
     const messages: any[] = [
       {
@@ -37,7 +42,7 @@ export async function POST(request: NextRequest) {
 
     // Add conversation history (keep last 10 messages for context)
     if (history && history.length > 0) {
-      const recentHistory = history.slice(-10);
+      const recentHistory = (history as Message[]).slice(-10);
       for (const msg of recentHistory) {
         messages.push({
           role: msg.role === 'user' ? 'user' : 'assistant',
@@ -76,22 +81,25 @@ export async function POST(request: NextRequest) {
   } catch (error: any) {
     console.error('Error in OpenAI chat API:', error);
 
+    const errStatus = (error as { status?: number}).status;
+    const errorMessage = (error as Error).message || "Unknown error";
+
     // Handle specific error types
-    if (error.status === 401) {
+    if (errStatus === 401) {
       return NextResponse.json(
         { error: 'Invalid API key. Please check your OpenAI API key configuration.' },
         { status: 401 }
       );
     }
 
-    if (error.status === 429) {
+    if (errStatus === 429) {
       return NextResponse.json(
         { error: 'API quota exceeded or rate limit reached. Please try again later.' },
         { status: 429 }
       );
     }
 
-    if (error.status === 400 && error.message?.includes('content_policy')) {
+    if (errStatus === 400 && errorMessage.includes('content_policy')) {
       return NextResponse.json(
         { error: 'Content was blocked due to policy violations. Please rephrase your message.' },
         { status: 400 }
@@ -107,7 +115,7 @@ export async function POST(request: NextRequest) {
 }
 
 // Handle CORS for development
-export async function OPTIONS(request: NextRequest) {
+export async function OPTIONS() {
   return new NextResponse(null, {
     status: 200,
     headers: {

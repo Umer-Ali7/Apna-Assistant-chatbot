@@ -28,12 +28,17 @@ export async function POST(request: NextRequest) {
     // Get the generative model
     const model = genAI.getGenerativeModel({ model: 'gemini-2.0-flash' });
 
+    interface Message {
+      role: string;
+      content: string;
+    }
+
     // Prepare the conversation history for context
     let conversationContext = '';
     if (history && history.length > 0) {
-      conversationContext = history
+      conversationContext = (history as Message[])
         .slice(-10) // Keep only the last 10 messages for context
-        .map((msg: any) => `${msg.role === 'user' ? 'User' : 'Assistant'}: ${msg.content}`)
+        .map((msg) => `${msg.role === 'user' ? 'User' : 'Assistant'}: ${msg.content}`)
         .join('\n');
       conversationContext += '\n';
     }
@@ -55,22 +60,25 @@ export async function POST(request: NextRequest) {
   } catch (error: any) {
     console.error('Error in chat API:', error);
 
+    // error.message ko type-safe banayein
+    const errorMessage = (error as Error).message || "Unknown error";
+
     // Handle specific error types
-    if (error.message?.includes('API_KEY_INVALID')) {
+    if (errorMessage.includes('API_KEY_INVALID')) {
       return NextResponse.json(
         { error: 'Invalid API key. Please check your Gemini API key configuration.' },
         { status: 401 }
       );
     }
 
-    if (error.message?.includes('QUOTA_EXCEEDED')) {
+    if (errorMessage.includes('QUOTA_EXCEEDED')) {
       return NextResponse.json(
         { error: 'API quota exceeded. Please try again later.' },
         { status: 429 }
       );
     }
 
-    if (error.message?.includes('SAFETY')) {
+    if (errorMessage.includes('SAFETY')) {
       return NextResponse.json(
         { error: 'Content was blocked due to safety concerns. Please rephrase your message.' },
         { status: 400 }
@@ -86,7 +94,7 @@ export async function POST(request: NextRequest) {
 }
 
 // Handle CORS for development
-export async function OPTIONS(request: NextRequest) {
+export async function OPTIONS() {
   return new NextResponse(null, {
     status: 200,
     headers: {

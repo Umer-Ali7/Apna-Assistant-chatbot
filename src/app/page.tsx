@@ -1,3 +1,5 @@
+// src/app/page.tsx
+
 'use client';
 
 import { useState, useRef, useEffect } from 'react';
@@ -27,16 +29,8 @@ export default function ChatPage() {
   const [apiProvider, setApiProvider] = useState<'gemini' | 'openai'>('gemini');
   const [showSettings, setShowSettings] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const textareaRef = useRef<HTMLTextAreaElement>(null); // Yeh naya ref add kiya hai
   const { theme, setTheme } = useTheme();
-  const textareaRef = useRef<HTMLTextAreaElement>(null);
-
-  // Textarea ki height adjust karne ke liye useEffect
-  useEffect(() => {
-    if (textareaRef.current) {
-      textareaRef.current.style.height = 'auto'; // Reset height
-      textareaRef.current.style.height = textareaRef.current.scrollHeight + 'px'; // Set to scroll height
-    }
-  }, [input]) // Jab input change ho, tab yeh effect run ho
 
   // Prevent hydration mismatch
   useEffect(() => {
@@ -51,6 +45,14 @@ export default function ChatPage() {
   useEffect(() => {
     scrollToBottom();
   }, [messages]);
+
+  // Textarea ki height adjust karne ke liye useEffect
+  useEffect(() => {
+    if (textareaRef.current) {
+      textareaRef.current.style.height = 'auto'; // Reset height
+      textareaRef.current.style.height = textareaRef.current.scrollHeight + 'px'; // Set to scroll height
+    }
+  }, [input]); // Jab input change ho, tab yeh effect run ho
 
   // Cycle through themes
   const cycleTheme = () => {
@@ -177,7 +179,7 @@ export default function ChatPage() {
             </div>
             <div>
               <h1 className="text-xl font-semibold text-gray-900 dark:text-white">
-                Apna Chat Assistant
+                AI Chat Assistant
               </h1>
               <p className="text-sm text-gray-500 dark:text-gray-400 hidden sm:block">
                 Powered by {apiProvider === 'gemini' ? 'Gemini Pro' : 'OpenAI'} • Always here to help
@@ -276,10 +278,10 @@ export default function ChatPage() {
                 <Bot className="w-8 h-8 text-white" />
               </div>
               <h2 className="text-2xl font-semibold text-gray-800 dark:text-gray-200 mb-3">
-                Welcome to Apna Chat
+                Welcome to AI Chat
               </h2>
               <p className="text-gray-600 dark:text-gray-400 max-w-md mx-auto leading-relaxed mb-6">
-                Start a conversation by typing a message below. I'm here to help with questions, 
+                Start a conversation by typing a message below. I&apos;m here to help with questions, 
                 creative tasks, problem-solving, and more.
               </p>
               <div className="text-sm text-gray-500 dark:text-gray-400 mb-4">
@@ -326,7 +328,7 @@ export default function ChatPage() {
           <form onSubmit={handleSubmit} className="flex space-x-3">
             <div className="flex-1 relative">
               <textarea
-                ref={textareaRef} // Yeh ref add karein
+                ref={textareaRef} // Yeh ref add kiya hai
                 value={input}
                 onChange={(e) => setInput(e.target.value)}
                 onKeyPress={handleKeyPress}
@@ -334,19 +336,19 @@ export default function ChatPage() {
                 rows={1}
                 className="w-full px-4 py-3 pr-12 bg-gray-100 dark:bg-gray-700 border border-gray-200 dark:border-gray-600 rounded-2xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-gray-400 transition-all duration-200 hover:bg-gray-50 hover:text-black dark:hover:bg-gray-650 resize-none"
                 disabled={isLoading}
-                style={{ minHeight: '48px', maxHeight: '120px' }} // Max height set kar sakte hain
+                style={{ minHeight: '48px', maxHeight: '120px' }}
               />
             </div>
             <button
               type="submit"
               disabled={!input.trim() || isLoading}
               className="px-6 py-3 bg-gradient-to-r from-blue-500 to-purple-600 hover:from-blue-600 hover:to-purple-700 disabled:from-gray-300 disabled:to-gray-300 dark:disabled:from-gray-600 dark:disabled:to-gray-600 text-white rounded-2xl transition-all duration-200 flex items-center justify-center min-w-[60px] shadow-lg hover:shadow-xl hover:scale-105 disabled:hover:scale-100 disabled:hover:shadow-lg"
-            >   
-             <Send className="w-5 h-5" />
+            >
+              <Send className="w-5 h-5" />
             </button>
           </form>
-           <div className="text-xs text-gray-500 dark:text-gray-400 text-center mt-2">
-              Press Enter to send • Shift+Enter for new line
+          <div className="text-xs text-gray-500 dark:text-gray-400 text-center mt-2">
+            Press Enter to send • Shift+Enter for new line
           </div>
         </div>
       </div>
@@ -391,4 +393,3 @@ function MessageBubble({ message }: { message: Message }) {
     </div>
   );
 }
-
