@@ -133,13 +133,17 @@ export default function ChatPage() {
         };
         
         setMessages(prev => [...prev, assistantMessage]);
-      } catch (error: unknown) { // 'any' ko 'unknown' kiya
-        console.error('Error sending message:', error);
-        let displayError = 'An unknown error occurred.';
+      } catch (error: unknown) {
+        console.error("Error sending message:", error);
+        let displayError = "An unknown error occurred.";
         if (error instanceof Error) {
           displayError = error.message;
-        } else if (typeof error === 'object' && error !== null && 'error' in error && typeof (error as any).error === 'string') {
-          displayError = (error as any).error;
+        } else if (typeof error === "object" && error !== null && "error" in error) {
+          // Yahan type check ko aur explicit kiya
+          const apiError = error as { error?: string };
+          if (typeof apiError.error === "string") {
+            displayError = apiError.error;
+          }
         }
         setError(displayError);
         
@@ -147,7 +151,7 @@ export default function ChatPage() {
         const errorMessage: Message = {
           id: (Date.now() + 1).toString(),
           content: `Sorry, I encountered an error: ${displayError}`,
-          role: 'assistant',
+          role: "assistant",
           timestamp: new Date(),
         };
         setMessages(prev => [...prev, errorMessage]);

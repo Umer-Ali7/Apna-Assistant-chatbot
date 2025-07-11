@@ -54,12 +54,17 @@ export async function POST(request: NextRequest) {
   } catch (error: unknown) { // 'any' ko 'unknown' kiya
     console.error('Error in chat API:', error);
 
-    let errorMessage = 'An unknown error occurred.';
+    let errorMessage = "An unknown error occurred.";
     if (error instanceof Error) {
       errorMessage = error.message;
-    } else if (typeof error === 'object' && error !== null && 'error' in error && typeof (error as any).error === 'string') {
-      errorMessage = (error as any).error; // Agar error object mein 'error' property hai
+    } else if (typeof error === "object" && error !== null && "error" in error) {
+      // Yahan type check ko aur explicit kiya
+      const apiError = error as { error?: string };
+      if (typeof apiError.error === "string") {
+        errorMessage = apiError.error;
+      }
     }
+
 
     if (errorMessage.includes('API_KEY_INVALID')) {
       return NextResponse.json(

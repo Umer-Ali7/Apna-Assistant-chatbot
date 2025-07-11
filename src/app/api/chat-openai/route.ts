@@ -75,7 +75,7 @@ export async function POST(request: NextRequest) {
   } catch (error: unknown) { // 'any' ko 'unknown' kiya
     console.error('Error in OpenAI chat API:', error);
 
-    let errorMessage = 'An unknown error occurred.';
+    let errorMessage = "An unknown error occurred.";
     let status = 500;
 
     if (error instanceof OpenAI.APIError) {
@@ -83,8 +83,12 @@ export async function POST(request: NextRequest) {
       status = error.status || 500;
     } else if (error instanceof Error) {
       errorMessage = error.message;
-    } else if (typeof error === 'object' && error !== null && 'error' in error && typeof (error as any).error === 'string') {
-      errorMessage = (error as any).error;
+    } else if (typeof error === "object" && error !== null && "error" in error) {
+      // Yahan type check ko aur explicit kiya
+      const apiError = error as { error?: string };
+      if (typeof apiError.error === "string") {
+        errorMessage = apiError.error;
+      }
     }
 
     if (errorMessage.includes('Invalid API key')) {
